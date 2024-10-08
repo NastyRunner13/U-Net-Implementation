@@ -20,12 +20,13 @@ def train_fn(loader, model, optimizer, loss_fn, scaler):
     for batch_ix, (data, targets) in enumerate(loop):
         data = data.to(device=config.DEVICE)
         targets = targets.float().unsqueeze(1).to(device=config.DEVICE)
+        
+        optimizer.zero_grad()
 
         with torch.amp.autocast('cuda'):
             predictions = model(data)
             loss = loss_fn(predictions, targets)
 
-        optimizer.zero_grad()
         scaler.scale(loss).backward()
         scaler.step(optimizer)
         scaler.update()
@@ -52,9 +53,8 @@ def main():
     )
     
     if config.LOAD_MODEL:
-        load_checkpoint(
-            torch.load("my_checkpoint.pth.tar", model)
-        )
+        checkpoint = torch.load("my_checkpoint.pth.tar")
+        load_checkpoint(checkpoint, model)
 
     scaler = torch.amp.grad_scaler('cuda')
 
@@ -68,6 +68,8 @@ def main():
             "state_dict": model.state_dict(),
             "optimizer": optimizer.state_dict()
         }
+
+        save_checkpoint(checkpoint)
 
         check_accuracy(val_loader, model, device=config.DEVICE)
 
